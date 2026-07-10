@@ -344,7 +344,7 @@
                 const docSnap = await getDoc(docRef);
                 studyData = docSnap.exists() ? docSnap.data() : {};
                 localStorage.setItem('syncId', syncId);
-                alert(                                                                        
+                alert("                                                                        
                            ;******~                                                                 
                       ,~~=*.      ~**:-                                                             
                     =#;               *#                                                            
@@ -379,7 +379,7 @@
            :. ;,=~   :              #~.. ;,-                                                        
             ;-=  ;;;!!               ,   =#                                                         
              ;:     .-                                                                              
-);
+");
                 renderCalendar();
             } catch (error) { console.error("Firebase 로드 에러:", error); alert("연결에 실패했습니다."); }
             loadingOverlay.style.display = 'none';
