@@ -382,4 +382,168 @@
             const blob = new Blob([JSON.stringify(studyData)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = `study_cloud_backup_${
+            a.href = url; a.download = `study_cloud_backup_${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(url);
+        }
+
+        window.importData = async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const syncId = syncIdInput.value.trim();
+            if(!syncId) { alert("화면 위쪽에 연결 ID를 먼저 입력해주세요!"); event.target.value = ''; return; }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    loadingOverlay.style.display = 'flex';
+                    const docRef = doc(db, "studyTrackers", syncId);
+                    await setDoc(docRef, importedData);
+                    studyData = importedData;
+                    localStorage.setItem('syncId', syncId);
+                    alert("데이터 복구가 완료되었습니다!");
+                    renderCalendar();
+                } catch (error) {
+                    alert("잘못된 파일이거나 업로드에 실패했습니다.");
+                } finally { loadingOverlay.style.display = 'none'; event.target.value = ''; }
+            };
+            reader.readAsText(file);
+        }
+
+        function loadDataSafely() {
+            try {
+                if (typeof window.localStorage === 'undefined') return {};
+                const rawData = window.localStorage.getItem('studyData');
+                if (!rawData) return {};
+                return JSON.parse(rawData) || {};
+            } catch (e) { return {}; }
+        }
+
+        function formatDateString(year, month, day) { return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            monthYearEl.textContent = `${year}년 ${month + 1}월`;
+            daysGridEl.innerHTML = '';
+
+            let firstDayIndex = new Date(year, month, 1).getDay();
+            firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1; 
+
+            const lastDay = new Date(year, month + 1, 0).getDate();
+
+            // 만약 클라우드 연결 안 했을 때를 대비한 로컬 백업 로드
+            if(Object.keys(studyData).length === 0) { studyData = loadDataSafely(); }
+
+            let currentMonthActualSum = 0;
+            let currentMonthPlannedOnlySum = 0;
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.classList.add('day-cell', 'empty');
+                daysGridEl.appendChild(emptyCell);
+            }
+
+            for (let day = 1; day <= lastDay; day++) {
+                const dateStr = formatDateString(year, month, day);
+                const cell = document.createElement('div');
+                cell.classList.add('day-cell');
+                
+                let cellHtml = `<div class="day-number">${day}</div><div class="record-info">`;
+                
+                if (studyData[dateStr]) {
+                    const data = studyData[dateStr];
+                    if (data.status && data.status !== 'none') cell.classList.add(`status-cell-${data.status}`);
+                    
+                    // 메모 출력
+                    if (data.memo && data.status !== 'none' && data.status !== 'planned' && data.status !== 'completed') {
+                        cellHtml += `<span class="cell-memo" title="${data.memo}">${data.memo}</span>`;
+                    }
+
+                    // 투두리스트 출력 (캘린더 셀 화면)
+                    if (data.todos && data.todos.length > 0) {
+                        data.todos.forEach(todo => {
+                            cellHtml += `<div class="cell-todo ${todo.checked ? 'checked' : ''}" title="${todo.text}">
+                                            ${todo.checked ? '☑️' : '⬜'} ${todo.text}
+                                         </div>`;
+                        });
+                    }
+
+                    let actual = parseFloat(data.actual) || 0;
+                    let planned = parseFloat(data.planned) || 0;
+
+                    if (planned > 0) cellHtml += `<span class="time-span">계획: ${planned}h</span>`;
+                    if (actual > 0) cellHtml += `<span class="time-span">실제: ${actual}h</span>`;
+
+                    if (actual > 0) currentMonthActualSum += actual; 
+                    else if (planned > 0) currentMonthPlannedOnlySum += planned;
+                }
+                
+                cellHtml += `</div>`;
+                cell.innerHTML = cellHtml;
+                
+                cell.addEventListener('click', () => {
+                    selectedDateStr = dateStr;
+                    modalDateEl.textContent = `${year}년 ${month + 1}월 ${day}일 기록`;
+                    const currentStatus = studyData[dateStr] && studyData[dateStr].status ? studyData[dateStr].status : 'none';
+                    attendanceStatusInput.value = currentStatus;
+                    
+                    // 기존 데이터 로드
+                    memoInputEl.value = studyData[dateStr] && studyData[dateStr].memo ? studyData[dateStr].memo : '';
+                    plannedTimeInput.value = studyData[dateStr] && studyData[dateStr].planned ? studyData[dateStr].planned : '';
+                    actualTimeInput.value = studyData[dateStr] && studyData[dateStr].actual ? studyData[dateStr].actual : '';
+                    currentTodos = studyData[dateStr] && studyData[dateStr].todos ? [...studyData[dateStr].todos] : [];
+                    
+                    toggleMemoField(currentStatus);
+                    renderTodos();
+                    
+                    modalEl.style.display = 'flex';
+                });
+                
+                daysGridEl.appendChild(cell);
+            }
+
+            let expectedTotal = currentMonthActualSum + currentMonthPlannedOnlySum;
+            document.getElementById('total-actual').textContent = `${currentMonthActualSum.toFixed(1).replace('.0', '')}시간`;
+            document.getElementById('total-planned-only').textContent = `${currentMonthPlannedOnlySum.toFixed(1).replace('.0', '')}시간`;
+            document.getElementById('total-expected').textContent = `${expectedTotal.toFixed(1).replace('.0', '')}시간`;
+
+            const goalHours = 80;
+            const actualPercent = Math.min((currentMonthActualSum / goalHours) * 100, 100);
+            const plannedPercent = Math.min((currentMonthPlannedOnlySum / goalHours) * 100, 100 - actualPercent);
+            
+            document.getElementById('bar-actual').style.width = `${actualPercent}%`;
+            document.getElementById('bar-planned').style.width = `${plannedPercent}%`;
+
+            const totalPercent = Math.round((expectedTotal / goalHours) * 100);
+            document.getElementById('progress-text').textContent = `예측 총합: ${expectedTotal.toFixed(1).replace('.0', '')} / ${goalHours} 시간 (${totalPercent}%)`;
+
+            const goalStatusTextEl = document.getElementById('goal-status-text');
+            if (expectedTotal >= goalHours) {
+                goalStatusTextEl.textContent = "🎉 80시간 달성 가능!";
+                goalStatusTextEl.style.color = "#4D7B52"; 
+            } else {
+                goalStatusTextEl.textContent = `목표까지 ${(goalHours - expectedTotal).toFixed(1).replace('.0', '')}시간 부족`;
+                goalStatusTextEl.style.color = "#C05656"; 
+            }
+        }
+
+        document.getElementById('sync-btn').addEventListener('click', loadCloudData);
+        document.getElementById('save-btn').addEventListener('click', saveCloudData);
+        document.getElementById('prev-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+        document.getElementById('next-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+        document.getElementById('close-modal').addEventListener('click', () => modalEl.style.display = 'none');
+        window.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.style.display = 'none'; });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedId = localStorage.getItem('syncId');
+            if(savedId) {
+                syncIdInput.value = savedId;
+                loadCloudData();
+            } else {
+                renderCalendar(); 
+            }
+        });
+    </script>
+</body>
+</html>
