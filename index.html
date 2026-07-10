@@ -444,7 +444,7 @@
                     
                     // 기존 호환성 유지: 단일 string 메모가 있다면 배열로 취급해서 출력
                     if (data.memo && typeof data.memo === 'string') {
-                        cellHtml += `<span class="cell-memo" title="${data.memo}">• ${data.memo}</span>`;
+                        cellHtml += `<span class="cell-memo" title="${data.memo}">${data.memo}</span>`;
                     }
                     
                     // 다중 메모 출력 (불릿 포인트 형태)
