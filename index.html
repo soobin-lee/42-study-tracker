@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>클라우드 스터디 트래커</title>
+    <style>
+        :root {
+            /* 파스텔 톤온톤 테마 */
+            --primary-color: #8FBFE0; 
+            --bg-color: #EAF4FC; 
+            --text-color: #475569; 
+            --accent-color: #6482AD; 
+            
+            --cell-empty-bg: #FFFFFF; 
+            --cell-planned-bg: #E1F0FA; 
+            --cell-planned-border: #C8E3F5;
+            --cell-planned-text: #416B8C;
+            --cell-completed-bg: #AAD4F2; 
+            --cell-completed-border: #8AC1E8;
+            --cell-completed-text: #1E4666; 
+            --cell-impossible-bg: #E2E8F0; 
+            --cell-impossible-text: #54657A;
+            --cell-rest-bg: #F2F7EF; 
+            --cell-rest-comp-bg: #DCECD5; 
+            --cell-rest-text: #3D5A40;
+        }
+
+        body { font-family: 'Pretendard', -apple-system, sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; align-items: center; padding: 30px 15px; margin: 0; }
+
+        /* 클라우드 연동 헤더 바 */
+        .cloud-header {
+            width: 100%; max-width: 800px; background: white; border-radius: 16px; padding: 15px 25px; margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(143, 191, 224, 0.15); display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; flex-wrap: wrap; gap: 10px;
+        }
+        .cloud-header .title { font-weight: bold; color: var(--accent-color); font-size: 16px; display: flex; align-items: center; gap: 8px;}
+        .cloud-sync-group { display: flex; gap: 8px; }
+        .cloud-sync-group input { padding: 8px 12px; border: 1px solid #C8E3F5; border-radius: 8px; outline: none; font-size: 14px; width: 180px; }
+        .cloud-sync-group input:focus { border-color: var(--primary-color); }
+        .cloud-sync-group button { background-color: var(--primary-color); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .cloud-sync-group button:hover { background-color: var(--accent-color); }
+
+        .calendar-container { width: 100%; max-width: 800px; background: white; border-radius: 20px; box-shadow: 0 12px 35px rgba(143, 191, 224, 0.2); overflow: hidden; padding: 35px; box-sizing: border-box;}
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        header button { background-color: var(--cell-empty-bg); color: var(--accent-color); border: 1px solid #C8E3F5; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.2s; }
+        header button:hover { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+        header h2 { margin: 0; color: var(--accent-color); font-size: 22px; }
+
+        .weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; font-size: 14px; font-weight: bold; color: var(--accent-color); margin-bottom: 12px; }
+        .days-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+
+        .day-cell { background-color: var(--cell-empty-bg); min-height: 110px; border-radius: 12px; padding: 8px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; border: 1px solid #F1F5F9; min-width: 0; overflow: hidden; }
+        .day-cell:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(143, 191, 224, 0.3); border-color: var(--primary-color); }
+        .day-cell.empty { background-color: transparent; border-color: transparent; cursor: default; }
+        .day-cell.empty:hover { transform: none; box-shadow: none; }
+        .day-number { font-weight: 600; margin-bottom: 6px; font-size: 14px; color: var(--accent-color); }
+
+        .status-cell-planned { background-color: var(--cell-planned-bg) !important; border-color: var(--cell-planned-border) !important; color: var(--cell-planned-text) !important; }
+        .status-cell-planned .day-number { color: var(--cell-planned-text) !important; }
+        .status-cell-completed { background-color: var(--cell-completed-bg) !important; border-color: var(--cell-completed-border) !important; color: var(--cell-completed-text) !important; }
+        .status-cell-completed .day-number { color: var(--cell-completed-text) !important; }
+        .status-cell-impossible { background-color: var(--cell-impossible-bg) !important; border-color: #CBD5E1 !important; color: var(--cell-impossible-text) !important; }
+        .status-cell-impossible .day-number { color: var(--cell-impossible-text) !important; }
+        .status-cell-rest { background-color: var(--cell-rest-bg) !important; border-color: #E2EED9 !important; color: var(--cell-rest-text) !important;}
+        .status-cell-rest_completed { background-color: var(--cell-rest-comp-bg) !important; border-color: #CBE0C3 !important; color: var(--cell-rest-text) !important; }
+
+        .record-info { font-size: 11px; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+        .record-info .time-span { background-color: rgba(255, 255, 255, 0.6); padding: 2px 6px; border-radius: 6px; font-weight: 600; border: none; }
+        .cell-memo { font-size: 11px; background-color: rgba(255, 255, 255, 0.7); padding: 3px 5px; border-radius: 6px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid rgba(0, 0, 0, 0.15); }
+
+        .stats-container { margin-top: 30px; padding-top: 25px; border-top: 2px dashed var(--cell-planned-border); }
+        .stats-title { font-weight: bold; color: var(--accent-color); margin-bottom: 15px; font-size: 17px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-box { background-color: var(--cell-empty-bg); padding: 15px 10px; border-radius: 12px; text-align: center; border: 1px solid #F1F5F9; }
+        .stat-box .label { font-size: 12px; color: #64748B; word-break: keep-all; }
+        .stat-box .value { font-size: 18px; font-weight: 800; color: var(--accent-color); margin-top: 6px; }
+        .stat-box.highlight { border: 1px solid var(--primary-color); background-color: var(--cell-planned-bg); }
+        .stat-box.highlight .value { color: var(--cell-completed-text); }
+
+        .goal-container { background-color: white; padding: 20px; border-radius: 12px; border: 1px solid #E2E8F0; }
+        .goal-header { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-color); }
+        .progress-bar-wrapper { background-color: #F1F5F9; border-radius: 9999px; height: 26px; overflow: hidden; position: relative; display: flex; }
+        .progress-bar-actual { background-color: var(--primary-color); height: 100%; transition: width 0.5s ease; }
+        .progress-bar-planned { background-color: var(--cell-planned-border); height: 100%; transition: width 0.5s ease; }
+        .progress-text { position: absolute; width: 100%; text-align: center; font-size: 12px; font-weight: bold; line-height: 26px; color: #334155; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.25); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); position: relative; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 26px; cursor: pointer; color: #CBD5E1; transition: 0.2s;}
+        .close-btn:hover { color: var(--accent-color); }
+        .modal-content h3 { margin-top: 0; color: var(--accent-color); border-bottom: 2px dashed #E2E8F0; padding-bottom: 12px; font-size: 18px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-color); }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 10px; box-sizing: border-box; outline: none; font-size: 14px; background-color: #F8FAFC; transition: 0.2s; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary-color); background-color: white; box-shadow: 0 0 0 3px rgba(143, 191, 224, 0.2); }
+        #memo-group { display: none; }
+        #save-btn { width: 100%; background-color: var(--primary-color); color: white; border: none; padding: 12px; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+        #save-btn:hover { background-color: var(--accent-color); }
+        
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 2000; justify-content: center; align-items: center; font-weight: bold; color: var(--accent-color); font-size: 18px;}
+    </style>
+</head>
+<body>
+
+    <div class="cloud-header">
+        <div class="title">☁️ 클라우드 동기화</div>
+        <div class="cloud-sync-group">
+            <input type="text" id="sync-id" placeholder="나만의 ID 입력 (예: my42study)">
+            <button id="sync-btn">연결 및 불러오기</button>
+        </div>
+    </div>
+
+    <div class="calendar-container">
+        <header>
+            <button id="prev-month">&lt; 이전 달</button>
+            <h2 id="month-year">로딩 중...</h2>
+            <button id="next-month">다음 달 &gt;</button>
+        </header>
+        
+        <div class="weekdays">
+            <div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div><div>일</div>
+        </div>
+        <div class="days-grid" id="days-grid"></div>
+
+        <div class="stats-container">
+            <div class="stats-title">📊 80시간 목표 예측 리포트</div>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="label">현재까지 실제 공부</div>
+                    <div class="value" id="total-actual">0시간</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">남은 공부 계획</div>
+                    <div class="value" id="total-planned-only">0시간</div>
+                </div>
+                <div class="stat-box highlight">
+                    <div class="label">예상 총 공부 시간</div>
+                    <div class="value" id="total-expected">0시간</div>
+                </div>
+            </div>
+            
+            <div class="goal-container">
+                <div class="goal-header">
+                    <span>🎯 예상 달성도 (실제 + 남은 계획)</span>
+                    <span id="goal-status-text">목표: 80시간</span>
+                </div>
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar-actual" id="bar-actual"></div>
+                    <div class="progress-bar-planned" id="bar-planned"></div>
+                    <div class="progress-text" id="progress-text">0 / 80 시간 예측 (0%)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="record-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-modal">&times;</span>
+            <h3 id="modal-date">날짜</h3>
+            
+            <div class="form-group">
+                <label for="attendance-status">출석 상태</label>
+                <select id="attendance-status">
+                    <option value="none">선택 안 함</option>
+                    <option value="planned">🗓️ 출석 예정</option>
+                    <option value="completed">✅ 출석 완료</option>
+                    <option value="impossible">❌ 출석 불가</option>
+                    <option value="rest">🛌 휴식 예정</option>
+                    <option value="rest_completed">🌳 휴식 완료</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="memo-group">
+                <label for="memo-input" id="memo-label">메모</label>
+                <input type="text" id="memo-input" placeholder="내용을 입력하세요">
+            </div>
+            
+            <div class="form-group">
+                <label for="planned-time">계획 시간 (시간)</label>
+                <input type="number" id="planned-time" min="0" step="0.5" placeholder="예: 4">
+            </div>
+            
+            <div class="form-group">
+                <label for="actual-time">실제 공부 시간 (시간)</label>
+                <input type="number" id="actual-time" min="0" step="0.5" placeholder="예: 3.5">
+            </div>
+            
+            <button id="save-btn">클라우드에 기록 저장</button>
+        </div>
+    </div>
+
+    <div id="loading-overlay" class="loading-overlay">데이터 동기화 중...</div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // ========================================================
+        // 🚨 여기에 복사한 Firebase 설정 코드를 덮어쓰세요! 🚨
+        const firebaseConfig = {
+            apiKey: "AIzaSyA75NPoRPnT4WI-ZAJTdfw0hTGJal2Rlao",
+            authDomain: "study-tracker-caf54.firebaseapp.com",
+            projectId: "study-tracker-caf54",
+            storageBucket: "study-tracker-caf54.firebasestorage.app",
+            messagingSenderId: "71966800935",
+            appId: "1:71966800935:web:e47033655d60105a652202",
+            measurementId: "G-VBM6CRYRP1"
+        };
+        // ========================================================
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 앱 상태 변수
+        let currentDate = new Date(2026, 6, 1); 
+        let selectedDateStr = "";
+        let studyData = {}; // 클라우드에서 불러온 데이터를 담을 메인 객체
+
+        // DOM Elements
+        const monthYearEl = document.getElementById('month-year');
+        const daysGridEl = document.getElementById('days-grid');
+        const modalEl = document.getElementById('record-modal');
+        const modalDateEl = document.getElementById('modal-date');
+        const attendanceStatusInput = document.getElementById('attendance-status');
+        const memoGroupEl = document.getElementById('memo-group');
+        const memoLabelEl = document.getElementById('memo-label');
+        const memoInputEl = document.getElementById('memo-input');
+        const plannedTimeInput = document.getElementById('planned-time');
+        const actualTimeInput = document.getElementById('actual-time');
+        
+        const syncIdInput = document.getElementById('sync-id');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        // 클라우드 데이터 불러오기 함수
+        async function loadCloudData() {
+            const syncId = syncIdInput.value.trim();
+            if(!syncId) {
+                alert("클라우드 연결 ID를 입력해주세요!");
+                return;
+            }
+            
+            loadingOverlay.style.display = 'flex';
+            try {
+                const docRef = doc(db, "studyTrackers", syncId);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    studyData = docSnap.data();
+                } else {
+                    studyData = {}; // 처음 만든 ID일 경우 빈 데이터로 시작
+                }
+                
+                // 브라우저 로컬 저장소에도 백업 (오프라인 방지)
+                localStorage.setItem('syncId', syncId);
+                
+                alert(`'${syncId}' 데이터 불러오기 완료!`);
+                renderCalendar();
+            } catch (error) {
+                console.error("Firebase 로드 에러:", error);
+                alert("연결에 실패했습니다. Firebase 설정을 확인해주세요.\n(테스트 모드 권한 설정 필요)");
+            }
+            loadingOverlay.style.display = 'none';
+        }
+
+        // 클라우드에 데이터 저장하기 함수
+        async function saveCloudData() {
+            const syncId = syncIdInput.value.trim();
+            if(!syncId) {
+                alert("저장하기 전에 클라우드 연결 ID를 입력해주세요.");
+                return;
+            }
+
+            const status = attendanceStatusInput.value;
+            studyData[selectedDateStr] = {
+                status: status,
+                planned: plannedTimeInput.value,
+                actual: actualTimeInput.value,
+                memo: status !== 'none' ? memoInputEl.value : ''
+            };
+
+            loadingOverlay.style.display = 'flex';
+            try {
+                const docRef = doc(db, "studyTrackers", syncId);
+                await setDoc(docRef, studyData);
+                modalEl.style.display = 'none';
+                renderCalendar();
+            } catch (error) {
+                console.error("Firebase 저장 에러:", error);
+                alert("저장에 실패했습니다. Firebase 권한이나 설정을 확인하세요.");
+            }
+            loadingOverlay.style.display = 'none';
+        }
+
+        // 유틸 함수들
+        function formatDateString(year, month, day) { return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; }
+
+        function toggleMemoField(status) {
+            if (status !== 'none') {
+                memoGroupEl.style.display = 'block';
+                if (status === 'planned') { memoLabelEl.textContent = '✏️ 학습 계획'; memoInputEl.placeholder = '무엇을 공부할 예정인가요?'; }
+                else if (status === 'completed') { memoLabelEl.textContent = '📝 학습 내용'; memoInputEl.placeholder = '어떤 공부를 완료했나요?'; }
+                else if (status === 'impossible') { memoLabelEl.textContent = '❌ 불가 사유'; memoInputEl.placeholder = '불가한 이유를 적어주세요'; }
+                else if (status === 'rest') { memoLabelEl.textContent = '🛌 휴식 계획'; memoInputEl.placeholder = '어떻게 쉴 예정인가요?'; }
+                else if (status === 'rest_completed') { memoLabelEl.textContent = '🌳 휴식 기록'; memoInputEl.placeholder = '어떻게 휴식을 보냈나요?'; }
+            } else {
+                memoGroupEl.style.display = 'none';
+                memoInputEl.value = '';
+            }
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            monthYearEl.textContent = `${year}년 ${month + 1}월`;
+            daysGridEl.innerHTML = '';
+
+            let firstDayIndex = new Date(year, month, 1).getDay();
+            firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1; 
+
+            const lastDay = new Date(year, month + 1, 0).getDate();
+
+            let currentMonthActualSum = 0;
+            let currentMonthPlannedOnlySum = 0;
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.classList.add('day-cell', 'empty');
+                daysGridEl.appendChild(emptyCell);
+            }
+
+            for (let day = 1; day <= lastDay; day++) {
+                const dateStr = formatDateString(year, month, day);
+                const cell = document.createElement('div');
+                cell.classList.add('day-cell');
+                
+                let cellHtml = `<div class="day-number">${day}</div><div class="record-info">`;
+                
+                if (studyData[dateStr]) {
+                    const data = studyData[dateStr];
+                    if (data.status && data.status !== 'none') cell.classList.add(`status-cell-${data.status}`);
+                    if (data.memo && data.status !== 'none') cellHtml += `<span class="cell-memo" title="${data.memo}">${data.memo}</span>`;
+
+                    let actual = parseFloat(data.actual) || 0;
+                    let planned = parseFloat(data.planned) || 0;
+
+                    if (planned > 0) cellHtml += `<span class="time-span">계획: ${planned}h</span>`;
+                    if (actual > 0) cellHtml += `<span class="time-span">실제: ${actual}h</span>`;
+
+                    if (actual > 0) currentMonthActualSum += actual; 
+                    else if (planned > 0) currentMonthPlannedOnlySum += planned;
+                }
+                
+                cellHtml += `</div>`;
+                cell.innerHTML = cellHtml;
+                
+                // 이벤트 리스너 등록
+                cell.addEventListener('click', () => {
+                    selectedDateStr = dateStr;
+                    modalDateEl.textContent = `${year}년 ${month + 1}월 ${day}일 기록`;
+                    const currentStatus = studyData[dateStr] && studyData[dateStr].status ? studyData[dateStr].status : 'none';
+                    attendanceStatusInput.value = currentStatus;
+                    toggleMemoField(currentStatus);
+                    memoInputEl.value = studyData[dateStr] && studyData[dateStr].memo ? studyData[dateStr].memo : '';
+                    plannedTimeInput.value = studyData[dateStr] && studyData[dateStr].planned ? studyData[dateStr].planned : '';
+                    actualTimeInput.value = studyData[dateStr] && studyData[dateStr].actual ? studyData[dateStr].actual : '';
+                    modalEl.style.display = 'flex';
+                });
+                
+                daysGridEl.appendChild(cell);
+            }
+
+            let expectedTotal = currentMonthActualSum + currentMonthPlannedOnlySum;
+            document.getElementById('total-actual').textContent = `${currentMonthActualSum.toFixed(1).replace('.0', '')}시간`;
+            document.getElementById('total-planned-only').textContent = `${currentMonthPlannedOnlySum.toFixed(1).replace('.0', '')}시간`;
+            document.getElementById('total-expected').textContent = `${expectedTotal.toFixed(1).replace('.0', '')}시간`;
+
+            const goalHours = 80;
+            const actualPercent = Math.min((currentMonthActualSum / goalHours) * 100, 100);
+            const plannedPercent = Math.min((currentMonthPlannedOnlySum / goalHours) * 100, 100 - actualPercent);
+            
+            document.getElementById('bar-actual').style.width = `${actualPercent}%`;
+            document.getElementById('bar-planned').style.width = `${plannedPercent}%`;
+
+            const totalPercent = Math.round((expectedTotal / goalHours) * 100);
+            document.getElementById('progress-text').textContent = `예측 총합: ${expectedTotal.toFixed(1).replace('.0', '')} / ${goalHours} 시간 (${totalPercent}%)`;
+
+            const goalStatusTextEl = document.getElementById('goal-status-text');
+            if (expectedTotal >= goalHours) {
+                goalStatusTextEl.textContent = "🎉 80시간 달성 가능!";
+                goalStatusTextEl.style.color = "#4D7B52"; 
+            } else {
+                goalStatusTextEl.textContent = `목표까지 ${(goalHours - expectedTotal).toFixed(1).replace('.0', '')}시간 부족`;
+                goalStatusTextEl.style.color = "#C05656"; 
+            }
+        }
+
+        // 이벤트 리스너 바인딩 (type="module" 스코프 문제 해결)
+        document.getElementById('sync-btn').addEventListener('click', loadCloudData);
+        document.getElementById('save-btn').addEventListener('click', saveCloudData);
+        document.getElementById('prev-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+        document.getElementById('next-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+        document.getElementById('close-modal').addEventListener('click', () => modalEl.style.display = 'none');
+        window.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.style.display = 'none'; });
+        attendanceStatusInput.addEventListener('change', (e) => toggleMemoField(e.target.value));
+
+        // 초기 실행 로직
+        window.addEventListener('DOMContentLoaded', () => {
+            // 이전에 연결했던 ID가 있다면 자동으로 불러옴
+            const savedId = localStorage.getItem('syncId');
+            if(savedId) {
+                syncIdInput.value = savedId;
+                loadCloudData();
+            } else {
+                renderCalendar(); // 빈 화면 먼저 렌더링
+            }
+        });
+    </script>
+</body>
+</html>
