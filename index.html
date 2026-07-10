@@ -6,11 +6,12 @@
     <title>클라우드 스터디 트래커</title>
     <style>
         :root {
-            var(--primary-color): #8FBFE0; 
+            /* 파스텔 톤온톤 테마 유지 */
             --primary-color: #8FBFE0; 
             --bg-color: #EAF4FC; 
             --text-color: #475569; 
             --accent-color: #6482AD; 
+            
             --cell-empty-bg: #FFFFFF; 
             --cell-planned-bg: #E1F0FA; 
             --cell-planned-border: #C8E3F5;
@@ -27,9 +28,12 @@
 
         body { font-family: 'Pretendard', -apple-system, sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; align-items: center; padding: 30px 15px; margin: 0; }
 
-        .cloud-header { width: 100%; max-width: 800px; background: white; border-radius: 16px; padding: 15px 25px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(143, 191, 224, 0.15); display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; flex-wrap: wrap; gap: 10px; }
+        .cloud-header {
+            width: 100%; max-width: 800px; background: white; border-radius: 16px; padding: 15px 25px; margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(143, 191, 224, 0.15); display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; flex-wrap: wrap; gap: 10px;
+        }
         .cloud-header .title { font-weight: bold; color: var(--accent-color); font-size: 16px; display: flex; align-items: center; gap: 8px;}
-        .cloud-sync-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .cloud-sync-group { display: flex; gap: 8px; }
         .cloud-sync-group input { padding: 8px 12px; border: 1px solid #C8E3F5; border-radius: 8px; outline: none; font-size: 14px; width: 180px; }
         .cloud-sync-group input:focus { border-color: var(--primary-color); }
         .cloud-sync-group button { background-color: var(--primary-color); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
@@ -79,6 +83,11 @@
         .progress-bar-planned { background-color: var(--cell-planned-border); height: 100%; transition: width 0.5s ease; }
         .progress-text { position: absolute; width: 100%; text-align: center; font-size: 12px; font-weight: bold; line-height: 26px; color: #334155; }
 
+        /* 데이터 백업 관리 UI */
+        .data-management { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+        .action-btn { background-color: white; border: 1px solid #C8E3F5; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: var(--accent-color); display: flex; align-items: center; }
+        .action-btn:hover { background-color: var(--cell-planned-bg); border-color: var(--primary-color); }
+
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.25); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background-color: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); position: relative; }
         .close-btn { position: absolute; top: 15px; right: 20px; font-size: 26px; cursor: pointer; color: #CBD5E1; transition: 0.2s;}
@@ -93,13 +102,6 @@
         #save-btn:hover { background-color: var(--accent-color); }
         
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 2000; justify-content: center; align-items: center; font-weight: bold; color: var(--accent-color); font-size: 18px;}
-
-        /* 하단 데이터 관리 영역 */
-        .data-management { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; justify-content: center; max-width: 800px; width: 100%; }
-        .action-btn { background-color: white; border: 1px solid #CBD5E1; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #475569; }
-        .action-btn:hover { background-color: #F8FAFC; border-color: var(--primary-color); color: var(--accent-color); }
-        .upload-btn { border-color: var(--primary-color); color: var(--primary-color); }
-        .upload-btn:hover { background-color: var(--primary-color); color: white; }
     </style>
 </head>
 <body>
@@ -129,3 +131,338 @@
             <div class="stats-grid">
                 <div class="stat-box">
                     <div class="label">현재까지 실제 공부</div>
+                    <div class="value" id="total-actual">0시간</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">남은 공부 계획</div>
+                    <div class="value" id="total-planned-only">0시간</div>
+                </div>
+                <div class="stat-box highlight">
+                    <div class="label">예상 총 공부 시간</div>
+                    <div class="value" id="total-expected">0시간</div>
+                </div>
+            </div>
+            
+            <div class="goal-container">
+                <div class="goal-header">
+                    <span>🎯 예상 달성도 (실제 + 남은 계획)</span>
+                    <span id="goal-status-text">목표: 80시간</span>
+                </div>
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar-actual" id="bar-actual"></div>
+                    <div class="progress-bar-planned" id="bar-planned"></div>
+                    <div class="progress-text" id="progress-text">0 / 80 시간 예측 (0%)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="data-management">
+        <button class="action-btn" onclick="exportData()">💾 현재 데이터 백업 (.json)</button>
+        <label class="action-btn" style="cursor: pointer;">
+            📂 클라우드에 데이터 복구
+            <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+        </label>
+    </div>
+
+    <div id="record-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-modal">&times;</span>
+            <h3 id="modal-date">날짜</h3>
+            
+            <div class="form-group">
+                <label for="attendance-status">출석 상태</label>
+                <select id="attendance-status">
+                    <option value="none">선택 안 함</option>
+                    <option value="planned">🗓️ 출석 예정</option>
+                    <option value="completed">✅ 출석 완료</option>
+                    <option value="impossible">❌ 출석 불가</option>
+                    <option value="rest">🛌 휴식 예정</option>
+                    <option value="rest_completed">🌳 휴식 완료</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="memo-group">
+                <label for="memo-input" id="memo-label">메모</label>
+                <input type="text" id="memo-input" placeholder="내용을 입력하세요">
+            </div>
+            
+            <div class="form-group">
+                <label for="planned-time">계획 시간 (시간)</label>
+                <input type="number" id="planned-time" min="0" step="0.5" placeholder="예: 4">
+            </div>
+            
+            <div class="form-group">
+                <label for="actual-time">실제 공부 시간 (시간)</label>
+                <input type="number" id="actual-time" min="0" step="0.5" placeholder="예: 3.5">
+            </div>
+            
+            <button id="save-btn">클라우드에 기록 저장</button>
+        </div>
+    </div>
+
+    <div id="loading-overlay" class="loading-overlay">데이터 처리 중...</div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // ========================================================
+        // 🚨 여기에 복사해 둔 Firebase 설정 코드를 반드시 덮어쓰세요!
+        const firebaseConfig = {
+            apiKey: "AIzaSyA75NPoRPnT4WI-ZAJTdfw0hTGJal2Rlao",
+            authDomain: "study-tracker-caf54.firebaseapp.com",
+            projectId: "study-tracker-caf54",
+            storageBucket: "study-tracker-caf54.firebasestorage.app",
+            messagingSenderId: "71966800935",
+            appId: "1:71966800935:web:e47033655d60105a652202",
+            measurementId: "G-VBM6CRYRP1"
+        };
+        // ========================================================
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentDate = new Date(2026, 6, 1); 
+        let selectedDateStr = "";
+        let studyData = {}; // 데이터를 관리하는 메인 객체
+
+        const monthYearEl = document.getElementById('month-year');
+        const daysGridEl = document.getElementById('days-grid');
+        const modalEl = document.getElementById('record-modal');
+        const modalDateEl = document.getElementById('modal-date');
+        const attendanceStatusInput = document.getElementById('attendance-status');
+        const memoGroupEl = document.getElementById('memo-group');
+        const memoLabelEl = document.getElementById('memo-label');
+        const memoInputEl = document.getElementById('memo-input');
+        const plannedTimeInput = document.getElementById('planned-time');
+        const actualTimeInput = document.getElementById('actual-time');
+        
+        const syncIdInput = document.getElementById('sync-id');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        async function loadCloudData() {
+            const syncId = syncIdInput.value.trim();
+            if(!syncId) { alert("클라우드 연결 ID를 입력해주세요!"); return; }
+            
+            loadingOverlay.style.display = 'flex';
+            try {
+                const docRef = doc(db, "studyTrackers", syncId);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    studyData = docSnap.data();
+                } else {
+                    studyData = {}; 
+                }
+                
+                localStorage.setItem('syncId', syncId);
+                alert(`'${syncId}' 데이터 불러오기 완료!`);
+                renderCalendar();
+            } catch (error) {
+                console.error("Firebase 로드 에러:", error);
+                alert("연결에 실패했습니다. Firebase 설정을 확인해주세요.");
+            }
+            loadingOverlay.style.display = 'none';
+        }
+
+        async function saveCloudData() {
+            const syncId = syncIdInput.value.trim();
+            if(!syncId) { alert("저장하기 전에 클라우드 연결 ID를 입력해주세요."); return; }
+
+            const status = attendanceStatusInput.value;
+            studyData[selectedDateStr] = {
+                status: status,
+                planned: plannedTimeInput.value,
+                actual: actualTimeInput.value,
+                memo: status !== 'none' ? memoInputEl.value : ''
+            };
+
+            loadingOverlay.style.display = 'flex';
+            try {
+                const docRef = doc(db, "studyTrackers", syncId);
+                await setDoc(docRef, studyData);
+                modalEl.style.display = 'none';
+                renderCalendar();
+            } catch (error) {
+                console.error("Firebase 저장 에러:", error);
+                alert("저장에 실패했습니다. 권한 설정을 확인하세요.");
+            }
+            loadingOverlay.style.display = 'none';
+        }
+
+        // 💡 1. 백업 데이터 내보내기 (클라우드 데이터를 json으로 저장)
+        window.exportData = function() {
+            if (Object.keys(studyData).length === 0) {
+                alert("백업할 데이터가 없습니다!");
+                return;
+            }
+            const blob = new Blob([JSON.stringify(studyData)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `study_cloud_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 💡 2. 백업 데이터 클라우드에 덮어씌우기 (복구)
+        window.importData = async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const syncId = syncIdInput.value.trim();
+            if(!syncId) {
+                alert("복구할 클라우드 공간이 필요합니다. 화면 위쪽에 연결 ID를 먼저 입력해주세요!");
+                event.target.value = ''; 
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    loadingOverlay.style.display = 'flex';
+                    
+                    // 파이어베이스에 업로드된 데이터로 덮어쓰기
+                    const docRef = doc(db, "studyTrackers", syncId);
+                    await setDoc(docRef, importedData);
+                    
+                    studyData = importedData; // 메모리에 반영
+                    localStorage.setItem('syncId', syncId);
+                    
+                    alert("성공적으로 기존 데이터가 클라우드에 복구되었습니다!");
+                    renderCalendar();
+                } catch (error) {
+                    alert("잘못된 .json 파일이거나 클라우드 업로드에 실패했습니다.");
+                    console.error(error);
+                } finally {
+                    loadingOverlay.style.display = 'none';
+                    event.target.value = ''; 
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function formatDateString(year, month, day) { return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; }
+
+        function toggleMemoField(status) {
+            if (status !== 'none') {
+                memoGroupEl.style.display = 'block';
+                if (status === 'planned') { memoLabelEl.textContent = '✏️ 학습 계획'; memoInputEl.placeholder = '무엇을 공부할 예정인가요?'; }
+                else if (status === 'completed') { memoLabelEl.textContent = '📝 학습 내용'; memoInputEl.placeholder = '어떤 공부를 완료했나요?'; }
+                else if (status === 'impossible') { memoLabelEl.textContent = '❌ 불가 사유'; memoInputEl.placeholder = '불가한 이유를 적어주세요'; }
+                else if (status === 'rest') { memoLabelEl.textContent = '🛌 휴식 계획'; memoInputEl.placeholder = '어떻게 쉴 예정인가요?'; }
+                else if (status === 'rest_completed') { memoLabelEl.textContent = '🌳 휴식 기록'; memoInputEl.placeholder = '어떻게 휴식을 보냈나요?'; }
+            } else {
+                memoGroupEl.style.display = 'none';
+                memoInputEl.value = '';
+            }
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            monthYearEl.textContent = `${year}년 ${month + 1}월`;
+            daysGridEl.innerHTML = '';
+
+            let firstDayIndex = new Date(year, month, 1).getDay();
+            firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1; 
+
+            const lastDay = new Date(year, month + 1, 0).getDate();
+
+            let currentMonthActualSum = 0;
+            let currentMonthPlannedOnlySum = 0;
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.classList.add('day-cell', 'empty');
+                daysGridEl.appendChild(emptyCell);
+            }
+
+            for (let day = 1; day <= lastDay; day++) {
+                const dateStr = formatDateString(year, month, day);
+                const cell = document.createElement('div');
+                cell.classList.add('day-cell');
+                
+                let cellHtml = `<div class="day-number">${day}</div><div class="record-info">`;
+                
+                if (studyData[dateStr]) {
+                    const data = studyData[dateStr];
+                    if (data.status && data.status !== 'none') cell.classList.add(`status-cell-${data.status}`);
+                    if (data.memo && data.status !== 'none') cellHtml += `<span class="cell-memo" title="${data.memo}">${data.memo}</span>`;
+
+                    let actual = parseFloat(data.actual) || 0;
+                    let planned = parseFloat(data.planned) || 0;
+
+                    if (planned > 0) cellHtml += `<span class="time-span">계획: ${planned}h</span>`;
+                    if (actual > 0) cellHtml += `<span class="time-span">실제: ${actual}h</span>`;
+
+                    if (actual > 0) currentMonthActualSum += actual; 
+                    else if (planned > 0) currentMonthPlannedOnlySum += planned;
+                }
+                
+                cellHtml += `</div>`;
+                cell.innerHTML = cellHtml;
+                
+                cell.addEventListener('click', () => {
+                    selectedDateStr = dateStr;
+                    modalDateEl.textContent = `${year}년 ${month + 1}월 ${day}일 기록`;
+                    const currentStatus = studyData[dateStr] && studyData[dateStr].status ? studyData[dateStr].status : 'none';
+                    attendanceStatusInput.value = currentStatus;
+                    toggleMemoField(currentStatus);
+                    memoInputEl.value = studyData[dateStr] && studyData[dateStr].memo ? studyData[dateStr].memo : '';
+                    plannedTimeInput.value = studyData[dateStr] && studyData[dateStr].planned ? studyData[dateStr].planned : '';
+                    actualTimeInput.value = studyData[dateStr] && studyData[dateStr].actual ? studyData[dateStr].actual : '';
+                    modalEl.style.display = 'flex';
+                });
+                
+                daysGridEl.appendChild(cell);
+            }
+
+            let expectedTotal = currentMonthActualSum + currentMonthPlannedOnlySum;
+            document.getElementById('total-actual').textContent = `${currentMonthActualSum.toFixed(1).replace('.0', '')}시간`;
+            document.getElementById('total-planned-only').textContent = `${currentMonthPlannedOnlySum.toFixed(1).replace('.0', '')}시간`;
+            document.getElementById('total-expected').textContent = `${expectedTotal.toFixed(1).replace('.0', '')}시간`;
+
+            const goalHours = 80;
+            const actualPercent = Math.min((currentMonthActualSum / goalHours) * 100, 100);
+            const plannedPercent = Math.min((currentMonthPlannedOnlySum / goalHours) * 100, 100 - actualPercent);
+            
+            document.getElementById('bar-actual').style.width = `${actualPercent}%`;
+            document.getElementById('bar-planned').style.width = `${plannedPercent}%`;
+
+            const totalPercent = Math.round((expectedTotal / goalHours) * 100);
+            document.getElementById('progress-text').textContent = `예측 총합: ${expectedTotal.toFixed(1).replace('.0', '')} / ${goalHours} 시간 (${totalPercent}%)`;
+
+            const goalStatusTextEl = document.getElementById('goal-status-text');
+            if (expectedTotal >= goalHours) {
+                goalStatusTextEl.textContent = "🎉 80시간 달성 가능!";
+                goalStatusTextEl.style.color = "#4D7B52"; 
+            } else {
+                goalStatusTextEl.textContent = `목표까지 ${(goalHours - expectedTotal).toFixed(1).replace('.0', '')}시간 부족`;
+                goalStatusTextEl.style.color = "#C05656"; 
+            }
+        }
+
+        document.getElementById('sync-btn').addEventListener('click', loadCloudData);
+        document.getElementById('save-btn').addEventListener('click', saveCloudData);
+        document.getElementById('prev-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+        document.getElementById('next-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+        document.getElementById('close-modal').addEventListener('click', () => modalEl.style.display = 'none');
+        window.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.style.display = 'none'; });
+        attendanceStatusInput.addEventListener('change', (e) => toggleMemoField(e.target.value));
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedId = localStorage.getItem('syncId');
+            if(savedId) {
+                syncIdInput.value = savedId;
+                loadCloudData();
+            } else {
+                renderCalendar(); 
+            }
+        });
+    </script>
+</body>
+</html>
