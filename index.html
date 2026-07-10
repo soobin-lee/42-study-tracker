@@ -6,7 +6,7 @@
     <title>클라우드 스터디 트래커</title>
     <style>
         :root {
-            /* 파스텔 톤온톤 테마 유지 */
+            /* 파스텔 톤온톤 테마 */
             --primary-color: #8FBFE0; 
             --bg-color: #EAF4FC; 
             --text-color: #475569; 
@@ -48,7 +48,7 @@
         .weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; font-size: 14px; font-weight: bold; color: var(--accent-color); margin-bottom: 12px; }
         .days-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
 
-        .day-cell { background-color: var(--cell-empty-bg); min-height: 110px; border-radius: 12px; padding: 8px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; border: 1px solid #F1F5F9; min-width: 0; overflow: hidden; }
+        .day-cell { background-color: var(--cell-empty-bg); min-height: 125px; border-radius: 12px; padding: 8px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; border: 1px solid #F1F5F9; min-width: 0; overflow: hidden; }
         .day-cell:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(143, 191, 224, 0.3); border-color: var(--primary-color); }
         .day-cell.empty { background-color: transparent; border-color: transparent; cursor: default; }
         .day-cell.empty:hover { transform: none; box-shadow: none; }
@@ -65,7 +65,10 @@
 
         .record-info { font-size: 11px; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
         .record-info .time-span { background-color: rgba(255, 255, 255, 0.6); padding: 2px 6px; border-radius: 6px; font-weight: 600; border: none; }
-        .cell-memo { font-size: 11px; background-color: rgba(255, 255, 255, 0.7); padding: 3px 5px; border-radius: 6px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid rgba(0, 0, 0, 0.15); }
+        
+        /* 캘린더 내부 투두리스트 / 메모 스타일 */
+        .cell-memo, .cell-todo { font-size: 11px; background-color: rgba(255, 255, 255, 0.7); padding: 3px 5px; border-radius: 6px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid rgba(0, 0, 0, 0.15); display: flex; align-items: center; gap: 4px; }
+        .cell-todo.checked { color: #94A3B8; text-decoration: line-through; border-left-color: #CBD5E1; opacity: 0.8; }
 
         .stats-container { margin-top: 30px; padding-top: 25px; border-top: 2px dashed var(--cell-planned-border); }
         .stats-title { font-weight: bold; color: var(--accent-color); margin-bottom: 15px; font-size: 17px; }
@@ -83,21 +86,34 @@
         .progress-bar-planned { background-color: var(--cell-planned-border); height: 100%; transition: width 0.5s ease; }
         .progress-text { position: absolute; width: 100%; text-align: center; font-size: 12px; font-weight: bold; line-height: 26px; color: #334155; }
 
-        /* 데이터 백업 관리 UI */
         .data-management { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
         .action-btn { background-color: white; border: 1px solid #C8E3F5; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: var(--accent-color); display: flex; align-items: center; }
         .action-btn:hover { background-color: var(--cell-planned-bg); border-color: var(--primary-color); }
 
+        /* 모달 스타일 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.25); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background-color: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); position: relative; }
+        .modal-content { background-color: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); position: relative; max-height: 90vh; overflow-y: auto; }
         .close-btn { position: absolute; top: 15px; right: 20px; font-size: 26px; cursor: pointer; color: #CBD5E1; transition: 0.2s;}
         .close-btn:hover { color: var(--accent-color); }
         .modal-content h3 { margin-top: 0; color: var(--accent-color); border-bottom: 2px dashed #E2E8F0; padding-bottom: 12px; font-size: 18px; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-color); }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 10px; box-sizing: border-box; outline: none; font-size: 14px; background-color: #F8FAFC; transition: 0.2s; }
+        .form-group input[type="number"], .form-group input[type="text"], .form-group select { width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 10px; box-sizing: border-box; outline: none; font-size: 14px; background-color: #F8FAFC; transition: 0.2s; }
         .form-group input:focus, .form-group select:focus { border-color: var(--primary-color); background-color: white; box-shadow: 0 0 0 3px rgba(143, 191, 224, 0.2); }
-        #memo-group { display: none; }
+        
+        /* 투두리스트 영역 특화 스타일 */
+        .todo-input-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        .todo-input-group button { background-color: var(--accent-color); color: white; border: none; border-radius: 10px; padding: 0 15px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
+        .todo-input-group button:hover { background-color: var(--primary-color); }
+        .todo-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
+        .todo-item { display: flex; align-items: center; gap: 8px; background: #F8FAFC; padding: 8px 10px; border-radius: 8px; border: 1px solid #E2E8F0; }
+        .todo-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary-color); }
+        .todo-item span { flex: 1; font-size: 13px; color: var(--text-color); word-break: break-all; }
+        .todo-item span.checked { text-decoration: line-through; color: #94A3B8; }
+        .todo-item .delete-btn { background: none; border: none; color: #EF4444; cursor: pointer; font-size: 16px; padding: 2px 4px; display: flex; align-items: center; justify-content: center; }
+        .todo-item .delete-btn:hover { background-color: #FEE2E2; border-radius: 4px; }
+
+        #memo-group, #todo-group { display: none; }
         #save-btn { width: 100%; background-color: var(--primary-color); color: white; border: none; padding: 12px; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
         #save-btn:hover { background-color: var(--accent-color); }
         
@@ -182,8 +198,18 @@
                 </select>
             </div>
 
+            <div class="form-group" id="todo-group">
+                <label id="todo-label">투두 리스트</label>
+                <div class="todo-input-group">
+                    <input type="text" id="new-todo-input" placeholder="할 일을 입력하세요" onkeypress="if(event.key==='Enter') addTodo()">
+                    <button type="button" onclick="addTodo()">추가</button>
+                </div>
+                <div class="todo-list" id="todo-list-container">
+                    </div>
+            </div>
+
             <div class="form-group" id="memo-group">
-                <label for="memo-input" id="memo-label">메모</label>
+                <label id="memo-label">메모</label>
                 <input type="text" id="memo-input" placeholder="내용을 입력하세요">
             </div>
             
@@ -208,7 +234,7 @@
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         // ========================================================
-        // 🚨 여기에 복사해 둔 Firebase 설정 코드를 반드시 덮어쓰세요!
+        // 🚨 여기에 복사해 둔 Firebase 설정 코드를 덮어쓰세요!
         const firebaseConfig = {
             apiKey: "AIzaSyA75NPoRPnT4WI-ZAJTdfw0hTGJal2Rlao",
             authDomain: "study-tracker-caf54.firebaseapp.com",
@@ -225,7 +251,8 @@
 
         let currentDate = new Date(2026, 6, 1); 
         let selectedDateStr = "";
-        let studyData = {}; // 데이터를 관리하는 메인 객체
+        let studyData = {}; 
+        let currentTodos = []; // 현재 선택된 날짜의 투두리스트 배열
 
         const monthYearEl = document.getElementById('month-year');
         const daysGridEl = document.getElementById('days-grid');
@@ -233,14 +260,70 @@
         const modalDateEl = document.getElementById('modal-date');
         const attendanceStatusInput = document.getElementById('attendance-status');
         const memoGroupEl = document.getElementById('memo-group');
+        const todoGroupEl = document.getElementById('todo-group');
         const memoLabelEl = document.getElementById('memo-label');
+        const todoLabelEl = document.getElementById('todo-label');
         const memoInputEl = document.getElementById('memo-input');
         const plannedTimeInput = document.getElementById('planned-time');
         const actualTimeInput = document.getElementById('actual-time');
-        
         const syncIdInput = document.getElementById('sync-id');
         const loadingOverlay = document.getElementById('loading-overlay');
 
+        // ==== 투두 리스트 렌더링 및 기능 ====
+        window.addTodo = function() {
+            const input = document.getElementById('new-todo-input');
+            const text = input.value.trim();
+            if (text) {
+                currentTodos.push({ text: text, checked: false });
+                input.value = '';
+                renderTodos();
+            }
+        };
+
+        window.toggleTodo = function(index) {
+            currentTodos[index].checked = !currentTodos[index].checked;
+            renderTodos();
+        };
+
+        window.deleteTodo = function(index) {
+            currentTodos.splice(index, 1);
+            renderTodos();
+        };
+
+        function renderTodos() {
+            const container = document.getElementById('todo-list-container');
+            container.innerHTML = '';
+            currentTodos.forEach((todo, index) => {
+                const item = document.createElement('div');
+                item.className = 'todo-item';
+                item.innerHTML = `
+                    <input type="checkbox" ${todo.checked ? 'checked' : ''} onchange="toggleTodo(${index})">
+                    <span class="${todo.checked ? 'checked' : ''}">${todo.text}</span>
+                    <button class="delete-btn" onclick="deleteTodo(${index})" title="삭제">×</button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // 상태 변경 시 입력창 스위칭
+        function toggleMemoField(status) {
+            memoGroupEl.style.display = 'none';
+            todoGroupEl.style.display = 'none';
+
+            if (status === 'planned' || status === 'completed') {
+                todoGroupEl.style.display = 'block';
+                todoLabelEl.textContent = status === 'planned' ? '🗓️ 학습 계획 리스트' : '✅ 학습 완료 리스트';
+            } else if (status === 'impossible' || status === 'rest' || status === 'rest_completed') {
+                memoGroupEl.style.display = 'block';
+                if (status === 'impossible') { memoLabelEl.textContent = '❌ 불가 사유'; memoInputEl.placeholder = '불가한 이유를 적어주세요'; }
+                else if (status === 'rest') { memoLabelEl.textContent = '🛌 휴식 계획'; memoInputEl.placeholder = '어떻게 쉴 예정인가요?'; }
+                else if (status === 'rest_completed') { memoLabelEl.textContent = '🌳 휴식 기록'; memoInputEl.placeholder = '어떻게 휴식을 보냈나요?'; }
+            }
+        }
+
+        attendanceStatusInput.addEventListener('change', (e) => toggleMemoField(e.target.value));
+
+        // ==== 클라우드 데이터 통신 ====
         async function loadCloudData() {
             const syncId = syncIdInput.value.trim();
             if(!syncId) { alert("클라우드 연결 ID를 입력해주세요!"); return; }
@@ -271,11 +354,14 @@
             if(!syncId) { alert("저장하기 전에 클라우드 연결 ID를 입력해주세요."); return; }
 
             const status = attendanceStatusInput.value;
+            
+            // 데이터 구성 (투두리스트 혹은 단순 메모 저장)
             studyData[selectedDateStr] = {
                 status: status,
                 planned: plannedTimeInput.value,
                 actual: actualTimeInput.value,
-                memo: status !== 'none' ? memoInputEl.value : ''
+                memo: (status === 'impossible' || status === 'rest' || status === 'rest_completed') ? memoInputEl.value : '',
+                todos: (status === 'planned' || status === 'completed') ? [...currentTodos] : []
             };
 
             loadingOverlay.style.display = 'flex';
@@ -291,178 +377,9 @@
             loadingOverlay.style.display = 'none';
         }
 
-        // 💡 1. 백업 데이터 내보내기 (클라우드 데이터를 json으로 저장)
         window.exportData = function() {
-            if (Object.keys(studyData).length === 0) {
-                alert("백업할 데이터가 없습니다!");
-                return;
-            }
+            if (Object.keys(studyData).length === 0) { alert("백업할 데이터가 없습니다!"); return; }
             const blob = new Blob([JSON.stringify(studyData)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = `study_cloud_backup_${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        // 💡 2. 백업 데이터 클라우드에 덮어씌우기 (복구)
-        window.importData = async function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const syncId = syncIdInput.value.trim();
-            if(!syncId) {
-                alert("복구할 클라우드 공간이 필요합니다. 화면 위쪽에 연결 ID를 먼저 입력해주세요!");
-                event.target.value = ''; 
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    loadingOverlay.style.display = 'flex';
-                    
-                    // 파이어베이스에 업로드된 데이터로 덮어쓰기
-                    const docRef = doc(db, "studyTrackers", syncId);
-                    await setDoc(docRef, importedData);
-                    
-                    studyData = importedData; // 메모리에 반영
-                    localStorage.setItem('syncId', syncId);
-                    
-                    alert("성공적으로 기존 데이터가 클라우드에 복구되었습니다!");
-                    renderCalendar();
-                } catch (error) {
-                    alert("잘못된 .json 파일이거나 클라우드 업로드에 실패했습니다.");
-                    console.error(error);
-                } finally {
-                    loadingOverlay.style.display = 'none';
-                    event.target.value = ''; 
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function formatDateString(year, month, day) { return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; }
-
-        function toggleMemoField(status) {
-            if (status !== 'none') {
-                memoGroupEl.style.display = 'block';
-                if (status === 'planned') { memoLabelEl.textContent = '✏️ 학습 계획'; memoInputEl.placeholder = '무엇을 공부할 예정인가요?'; }
-                else if (status === 'completed') { memoLabelEl.textContent = '📝 학습 내용'; memoInputEl.placeholder = '어떤 공부를 완료했나요?'; }
-                else if (status === 'impossible') { memoLabelEl.textContent = '❌ 불가 사유'; memoInputEl.placeholder = '불가한 이유를 적어주세요'; }
-                else if (status === 'rest') { memoLabelEl.textContent = '🛌 휴식 계획'; memoInputEl.placeholder = '어떻게 쉴 예정인가요?'; }
-                else if (status === 'rest_completed') { memoLabelEl.textContent = '🌳 휴식 기록'; memoInputEl.placeholder = '어떻게 휴식을 보냈나요?'; }
-            } else {
-                memoGroupEl.style.display = 'none';
-                memoInputEl.value = '';
-            }
-        }
-
-        function renderCalendar() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-
-            monthYearEl.textContent = `${year}년 ${month + 1}월`;
-            daysGridEl.innerHTML = '';
-
-            let firstDayIndex = new Date(year, month, 1).getDay();
-            firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1; 
-
-            const lastDay = new Date(year, month + 1, 0).getDate();
-
-            let currentMonthActualSum = 0;
-            let currentMonthPlannedOnlySum = 0;
-
-            for (let i = 0; i < firstDayIndex; i++) {
-                const emptyCell = document.createElement('div');
-                emptyCell.classList.add('day-cell', 'empty');
-                daysGridEl.appendChild(emptyCell);
-            }
-
-            for (let day = 1; day <= lastDay; day++) {
-                const dateStr = formatDateString(year, month, day);
-                const cell = document.createElement('div');
-                cell.classList.add('day-cell');
-                
-                let cellHtml = `<div class="day-number">${day}</div><div class="record-info">`;
-                
-                if (studyData[dateStr]) {
-                    const data = studyData[dateStr];
-                    if (data.status && data.status !== 'none') cell.classList.add(`status-cell-${data.status}`);
-                    if (data.memo && data.status !== 'none') cellHtml += `<span class="cell-memo" title="${data.memo}">${data.memo}</span>`;
-
-                    let actual = parseFloat(data.actual) || 0;
-                    let planned = parseFloat(data.planned) || 0;
-
-                    if (planned > 0) cellHtml += `<span class="time-span">계획: ${planned}h</span>`;
-                    if (actual > 0) cellHtml += `<span class="time-span">실제: ${actual}h</span>`;
-
-                    if (actual > 0) currentMonthActualSum += actual; 
-                    else if (planned > 0) currentMonthPlannedOnlySum += planned;
-                }
-                
-                cellHtml += `</div>`;
-                cell.innerHTML = cellHtml;
-                
-                cell.addEventListener('click', () => {
-                    selectedDateStr = dateStr;
-                    modalDateEl.textContent = `${year}년 ${month + 1}월 ${day}일 기록`;
-                    const currentStatus = studyData[dateStr] && studyData[dateStr].status ? studyData[dateStr].status : 'none';
-                    attendanceStatusInput.value = currentStatus;
-                    toggleMemoField(currentStatus);
-                    memoInputEl.value = studyData[dateStr] && studyData[dateStr].memo ? studyData[dateStr].memo : '';
-                    plannedTimeInput.value = studyData[dateStr] && studyData[dateStr].planned ? studyData[dateStr].planned : '';
-                    actualTimeInput.value = studyData[dateStr] && studyData[dateStr].actual ? studyData[dateStr].actual : '';
-                    modalEl.style.display = 'flex';
-                });
-                
-                daysGridEl.appendChild(cell);
-            }
-
-            let expectedTotal = currentMonthActualSum + currentMonthPlannedOnlySum;
-            document.getElementById('total-actual').textContent = `${currentMonthActualSum.toFixed(1).replace('.0', '')}시간`;
-            document.getElementById('total-planned-only').textContent = `${currentMonthPlannedOnlySum.toFixed(1).replace('.0', '')}시간`;
-            document.getElementById('total-expected').textContent = `${expectedTotal.toFixed(1).replace('.0', '')}시간`;
-
-            const goalHours = 80;
-            const actualPercent = Math.min((currentMonthActualSum / goalHours) * 100, 100);
-            const plannedPercent = Math.min((currentMonthPlannedOnlySum / goalHours) * 100, 100 - actualPercent);
-            
-            document.getElementById('bar-actual').style.width = `${actualPercent}%`;
-            document.getElementById('bar-planned').style.width = `${plannedPercent}%`;
-
-            const totalPercent = Math.round((expectedTotal / goalHours) * 100);
-            document.getElementById('progress-text').textContent = `예측 총합: ${expectedTotal.toFixed(1).replace('.0', '')} / ${goalHours} 시간 (${totalPercent}%)`;
-
-            const goalStatusTextEl = document.getElementById('goal-status-text');
-            if (expectedTotal >= goalHours) {
-                goalStatusTextEl.textContent = "🎉 80시간 달성 가능!";
-                goalStatusTextEl.style.color = "#4D7B52"; 
-            } else {
-                goalStatusTextEl.textContent = `목표까지 ${(goalHours - expectedTotal).toFixed(1).replace('.0', '')}시간 부족`;
-                goalStatusTextEl.style.color = "#C05656"; 
-            }
-        }
-
-        document.getElementById('sync-btn').addEventListener('click', loadCloudData);
-        document.getElementById('save-btn').addEventListener('click', saveCloudData);
-        document.getElementById('prev-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
-        document.getElementById('next-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
-        document.getElementById('close-modal').addEventListener('click', () => modalEl.style.display = 'none');
-        window.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.style.display = 'none'; });
-        attendanceStatusInput.addEventListener('change', (e) => toggleMemoField(e.target.value));
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedId = localStorage.getItem('syncId');
-            if(savedId) {
-                syncIdInput.value = savedId;
-                loadCloudData();
-            } else {
-                renderCalendar(); 
-            }
-        });
-    </script>
-</body>
-</html>
+            a.href = url; a.download = `study_cloud_backup_${
