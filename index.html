@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>클라우드 스터디 트래커</title>
+    <title>misumi uika ⋆⭒˚｡⋆</title>
     <style>
         :root {
             --primary-color: #8FBFE0; 
@@ -345,7 +345,7 @@
                 const docSnap = await getDoc(docRef);
                 studyData = docSnap.exists() ? docSnap.data() : {};
                 localStorage.setItem('syncId', syncId);
-                alert(`'${syncId}' 데이터 불러오기 완료!`);
+                //alert(`'${syncId}' 데이터 불러오기 완료!`);
                 renderCalendar();
             } catch (error) { console.error("Firebase 로드 에러:", error); alert("연결에 실패했습니다."); }
             loadingOverlay.style.display = 'none';
