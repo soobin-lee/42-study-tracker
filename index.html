@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <link rel="icon" type="image/png" href="favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>misumi uika ⋆⭒˚｡⋆</title>
+    <title>클라우드 스터디 트래커</title>
     <style>
         :root {
-            /* 파스텔 톤온톤 테마 */
             --primary-color: #8FBFE0; 
             --bg-color: #EAF4FC; 
             --text-color: #475569; 
@@ -198,6 +196,7 @@
                 </select>
             </div>
 
+            <!-- 투두리스트 폼 (출석 예정, 출석 완료, 휴식 예정 시 표시) -->
             <div class="form-group" id="todo-group">
                 <label id="todo-label">투두 리스트</label>
                 <div class="list-input-group">
@@ -207,6 +206,7 @@
                 <div class="dynamic-list" id="todo-list-container"></div>
             </div>
 
+            <!-- 다중 메모 리스트 폼 (불가, 휴식 완료 시 표시) -->
             <div class="form-group" id="memo-group">
                 <label id="memo-label">사유/메모 리스트</label>
                 <div class="list-input-group">
@@ -218,7 +218,7 @@
             
             <div class="form-group">
                 <label for="planned-time">계획 시간 (시간)</label>
-                <input type="number" id="planned-time" min="0" step="0.5" placeholder="예: 4">
+                <input type="number" id="planned-time" min="0" step="0.5" placeholder="예: 7.5">
             </div>
             
             <div class="form-group">
@@ -232,6 +232,7 @@
 
     <div id="loading-overlay" class="loading-overlay">데이터 처리 중...</div>
 
+    <!-- Firebase 연동 스크립트 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
@@ -256,7 +257,7 @@
         let selectedDateStr = "";
         let studyData = {}; 
         let currentTodos = []; 
-        let currentMemos = []; // 여러 개의 메모를 관리하는 배열 추가
+        let currentMemos = [];
 
         const monthYearEl = document.getElementById('month-year');
         const daysGridEl = document.getElementById('days-grid');
@@ -272,7 +273,7 @@
         const syncIdInput = document.getElementById('sync-id');
         const loadingOverlay = document.getElementById('loading-overlay');
 
-        // ==== 투두 리스트 기능 ====
+        // ==== 투두 리스트 관리 ====
         window.addTodo = function() {
             const input = document.getElementById('new-todo-input');
             const text = input.value.trim();
@@ -295,7 +296,7 @@
             });
         }
 
-        // ==== 다중 메모 리스트 기능 ====
+        // ==== 다중 메모 리스트 관리 ====
         window.addMemo = function() {
             const input = document.getElementById('new-memo-input');
             const text = input.value.trim();
@@ -316,25 +317,25 @@
             });
         }
 
-        // ==== UI 스위칭 ====
+        // ==== UI 스위칭 (휴식 예정도 투두리스트로 포함) ====
         function toggleMemoField(status) {
             memoGroupEl.style.display = 'none';
             todoGroupEl.style.display = 'none';
 
-            if (status === 'planned' || status === 'completed') {
+            if (status === 'planned' || status === 'completed' || status === 'rest') {
                 todoGroupEl.style.display = 'block';
-                todoLabelEl.textContent = status === 'planned' ? '🗓️ 학습 계획 리스트' : '✅ 학습 완료 리스트';
-                document.getElementById('new-todo-input').placeholder = '항목을 입력하고 엔터를 누르세요';
-            } else if (status === 'impossible' || status === 'rest' || status === 'rest_completed') {
+                if (status === 'planned') { todoLabelEl.textContent = '🗓️ 학습 계획 리스트'; document.getElementById('new-todo-input').placeholder = '무엇을 공부할 예정인가요?'; }
+                else if (status === 'completed') { todoLabelEl.textContent = '✅ 학습 완료 리스트'; document.getElementById('new-todo-input').placeholder = '어떤 공부를 완료했나요?'; }
+                else if (status === 'rest') { todoLabelEl.textContent = '🛌 휴식 계획 리스트'; document.getElementById('new-todo-input').placeholder = '어떻게 쉴 예정인가요?'; }
+            } else if (status === 'impossible' || status === 'rest_completed') {
                 memoGroupEl.style.display = 'block';
                 if (status === 'impossible') { memoLabelEl.textContent = '❌ 불가 사유 리스트'; document.getElementById('new-memo-input').placeholder = '불가한 이유를 추가해주세요'; }
-                else if (status === 'rest') { memoLabelEl.textContent = '🛌 휴식 계획 리스트'; document.getElementById('new-memo-input').placeholder = '어떻게 쉴 예정인가요?'; }
                 else if (status === 'rest_completed') { memoLabelEl.textContent = '🌳 휴식 기록 리스트'; document.getElementById('new-memo-input').placeholder = '어떻게 휴식을 보냈나요?'; }
             }
         }
         attendanceStatusInput.addEventListener('change', (e) => toggleMemoField(e.target.value));
 
-        // ==== 클라우드 데이터 통신 ====
+        // ==== 클라우드 연동 ====
         async function loadCloudData() {
             const syncId = syncIdInput.value.trim();
             if(!syncId) { alert("클라우드 연결 ID를 입력해주세요!"); return; }
@@ -344,6 +345,7 @@
                 const docSnap = await getDoc(docRef);
                 studyData = docSnap.exists() ? docSnap.data() : {};
                 localStorage.setItem('syncId', syncId);
+                alert(`'${syncId}' 데이터 불러오기 완료!`);
                 renderCalendar();
             } catch (error) { console.error("Firebase 로드 에러:", error); alert("연결에 실패했습니다."); }
             loadingOverlay.style.display = 'none';
@@ -358,8 +360,8 @@
                 status: status,
                 planned: plannedTimeInput.value,
                 actual: actualTimeInput.value,
-                memos: (status === 'impossible' || status === 'rest' || status === 'rest_completed') ? [...currentMemos] : [],
-                todos: (status === 'planned' || status === 'completed') ? [...currentTodos] : []
+                memos: (status === 'impossible' || status === 'rest_completed') ? [...currentMemos] : [],
+                todos: (status === 'planned' || status === 'completed' || status === 'rest') ? [...currentTodos] : []
             };
 
             loadingOverlay.style.display = 'flex';
@@ -442,24 +444,15 @@
                     const data = studyData[dateStr];
                     if (data.status && data.status !== 'none') cell.classList.add(`status-cell-${data.status}`);
                     
-                    // 기존 호환성 유지: 단일 string 메모가 있다면 배열로 취급해서 출력
                     if (data.memo && typeof data.memo === 'string') {
-                        cellHtml += `<span class="cell-memo" title="${data.memo}">${data.memo}</span>`;
+                        cellHtml += `<span class="cell-memo" title="${data.memo}">• ${data.memo}</span>`;
                     }
-                    
-                    // 다중 메모 출력 (불릿 포인트 형태)
                     if (data.memos && data.memos.length > 0) {
-                        data.memos.forEach(memo => {
-                            cellHtml += `<span class="cell-memo" title="${memo}">${memo}</span>`;
-                        });
+                        data.memos.forEach(memo => { cellHtml += `<span class="cell-memo" title="${memo}">• ${memo}</span>`; });
                     }
-
-                    // 투두리스트 출력 (체크박스 형태)
                     if (data.todos && data.todos.length > 0) {
                         data.todos.forEach(todo => {
-                            cellHtml += `<div class="cell-todo ${todo.checked ? 'checked' : ''}" title="${todo.text}">
-                                            ${todo.checked ? '☑️' : '⬜'} ${todo.text}
-                                         </div>`;
+                            cellHtml += `<div class="cell-todo ${todo.checked ? 'checked' : ''}" title="${todo.text}">${todo.checked ? '☑️' : '⬜'} ${todo.text}</div>`;
                         });
                     }
 
@@ -482,12 +475,25 @@
                     const currentStatus = studyData[dateStr] && studyData[dateStr].status ? studyData[dateStr].status : 'none';
                     attendanceStatusInput.value = currentStatus;
                     
-                    plannedTimeInput.value = studyData[dateStr] && studyData[dateStr].planned ? studyData[dateStr].planned : '';
+                    // 💡 계획 시간 디폴트 로직 적용
+                    let savedPlanned = '';
+                    if (studyData[dateStr] && studyData[dateStr].planned !== undefined && studyData[dateStr].planned !== '') {
+                        savedPlanned = studyData[dateStr].planned;
+                    } else {
+                        savedPlanned = '7.5';
+                    }
+                    plannedTimeInput.value = savedPlanned;
+                    
                     actualTimeInput.value = studyData[dateStr] && studyData[dateStr].actual ? studyData[dateStr].actual : '';
                     
-                    // 투두리스트 및 메모 배열 초기화 (기존 단일 memo가 있다면 배열 첫 번째로 이관)
                     currentTodos = studyData[dateStr] && studyData[dateStr].todos ? [...studyData[dateStr].todos] : [];
                     currentMemos = studyData[dateStr] && studyData[dateStr].memos ? [...studyData[dateStr].memos] : (studyData[dateStr] && studyData[dateStr].memo ? [studyData[dateStr].memo] : []);
+                    
+                    // 💡 데이터 마이그레이션: '휴식 예정' 상태에 등록된 이전 메모를 투두리스트로 자동 변환
+                    if (currentStatus === 'rest' && currentTodos.length === 0 && currentMemos.length > 0) {
+                        currentTodos = currentMemos.map(memoText => ({ text: memoText, checked: false }));
+                        currentMemos = [];
+                    }
                     
                     toggleMemoField(currentStatus);
                     renderTodos();
