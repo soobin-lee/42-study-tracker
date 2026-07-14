@@ -311,7 +311,7 @@
                 const item = document.createElement('div');
                 item.className = 'list-item';
                 item.innerHTML = `
-                    <span style="padding-left: 4px;">• ${memo}</span>
+                    <span style="padding-left: 4px;">${memo}</span>
                     <button class="delete-btn" onclick="deleteMemo(${index})" title="삭제">×</button>
                 `;
                 container.appendChild(item);
@@ -446,10 +446,10 @@
                     if (data.status && data.status !== 'none') cell.classList.add(`status-cell-${data.status}`);
                     
                     if (data.memo && typeof data.memo === 'string') {
-                        cellHtml += `<span class="cell-memo" title="${data.memo}">• ${data.memo}</span>`;
+                        cellHtml += `<span class="cell-memo" title="${data.memo}">${data.memo}</span>`;
                     }
                     if (data.memos && data.memos.length > 0) {
-                        data.memos.forEach(memo => { cellHtml += `<span class="cell-memo" title="${memo}">• ${memo}</span>`; });
+                        data.memos.forEach(memo => { cellHtml += `<span class="cell-memo" title="${memo}">${memo}</span>`; });
                     }
                     if (data.todos && data.todos.length > 0) {
                         data.todos.forEach(todo => {
